@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define UT_DUMPSTACK
 #include "comm.h"
 
 
@@ -78,7 +79,20 @@ int wd_platform_set_trigger(struct wd_platform_info *pinfo, int index,
 int wd_platform_info_init(struct wd_platform_info *pinfo) {return 0;}
 void wd_platform_info_clean(struct wd_platform_info *pinfo) {}
 
+void case_safe_vint(void) {
+	int a, b, c, d;
+	int ret, size;
+	char *str;
+
+	str = " 100, 200, 40000, 0 ";
+	size = strlen(str);
+	ret = safe_get_uintv(" 100, 200, 40000, 0 ", size, 4, &a, &b, &c, &d);
+	ut_assert(!ret);
+
+}
+
 int main(void)
 {
+	test(100, case_safe_vint);
 	return 0;
 }

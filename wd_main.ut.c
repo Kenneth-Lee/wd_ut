@@ -79,16 +79,44 @@ int wd_platform_set_trigger(struct wd_platform_info *pinfo, int index,
 int wd_platform_info_init(struct wd_platform_info *pinfo) {return 0;}
 void wd_platform_info_clean(struct wd_platform_info *pinfo) {}
 
-void case_safe_vint(void) {
-	int a, b, c, d;
-	int ret, size;
-	char *str;
+int test_uintv(char *str, unsigned int *a, unsigned int *b, unsigned int *c, unsigned int *d) {
+	int size;
 
-	str = " 100, 200, 40000, 0 ";
 	size = strlen(str);
-	ret = safe_get_uintv(" 100, 200, 40000, 0 ", size, 4, &a, &b, &c, &d);
-	ut_assert(!ret);
+	return safe_get_uintv(str, size, 4, a, b, c, d);
+}
 
+void case_safe_vint(void) {
+	unsigned int a, b, c, d;
+	int ret;
+
+	ret = test_uintv(" 100 , 200, 40000, 0 ", &a, &b, &c, &d);
+	ut_assert(!ret);
+	ut_assert_str(a==100, "a=%d\n", a);
+	ut_assert(b==200);
+	ut_assert(c==40000);
+	ut_assert(d==0);
+
+	ret = test_uintv("0x100,010,     0xffff,	0100", &a, &b, &c, &d);
+	ut_assert(!ret);
+	ut_assert(a==0x100);
+	ut_assert(b==010);
+	ut_assert(c==0xffff);
+	ut_assert(d==0100);
+
+	ret = test_uintv("0x100,010,  \t   0xffff,	0100\n", &a, &b, &c, &d);
+	ut_assert(!ret);
+	ut_assert(a==0x100);
+	ut_assert(b==010);
+	ut_assert(c==0xffff);
+	ut_assert(d==0100);
+
+	ret = test_uintv("0x100,010,  \t   0xffff,	0100 0", &a, &b, &c, &d);
+	ut_assert(ret);
+
+	ret = safe_get_uintv("10", 2, 1, &a);
+	ut_assert(!ret);
+	ut_assert(a==10);
 }
 
 int main(void)

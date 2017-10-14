@@ -21,40 +21,6 @@ static inline void *kfree(void *p) {
 	free(p);
 }
 
-/*
-#define vfio_set_irqs_validate_and_prepare(...) 0
-
-#define kzalloc(size, flags) malloc(size)
-#define kfree(p) free(p)
-#define copy_from_user(from, to, n) memcpy(from, to, n)
-#define copy_to_user(to, from, n) memcpy(from, to, n)
-
-#define to_platform_device(dev) 0
-#define symbol_get(sym) 0
-#define symbol_put(sym)
-
-void *memdup_user(const void __user *src, size_t len) {
-	void * p = malloc(len);
-	if(p)
-		memcpy(p, src, len);
-
-	return p;
-}
-
-int vfio_virqfd_enable(void *opaque,
-		       int (*handler)(void *, void *),
-		       void (*thread)(void *, void *),
-		       void *data, struct virqfd **pvirqfd, int fd)
-{
-	return 0;
-}
-
-void vfio_virqfd_disable(struct virqfd **pvirqfd){}
-
-#define mdev_register_device(...) 0
-#define mdev_unregister_device(...)
-*/
-
 #define init_waitqueue_head(...)
 #define __module_get(...)
 #define module_put(...)
@@ -82,7 +48,24 @@ struct device *mdev_parent_dev(struct mdev_device *mdev)
 	return NULL;
 }
 
-long simple_strtol(const char *cp, char **endp, unsigned int base) {
+static inline int kstrtol(const char *s, unsigned int base, long *res) {
+	switch(testcase) {
+		case 102:
+			return -ERANGE;
+		case 103:
+			*res = 0;
+			break;
+		case 104:
+			*res = 99;
+			break;
+		case 105:
+			*res = -99;
+			break;
+		case 106:
+			*res = 15;
+			break;
+	}
+
 	return 0;
 }
 
@@ -103,8 +86,50 @@ static inline pid_t task_pid_nr(struct task_struct *tsk) {
 
 #include "wd_main.c"
 
+static void case_priority_store(void) {
+	struct device dev;
+	struct wd_dev wdev;
+	size_t s;
+
+	wdev.priority = 50;
+
+	/* no wdev */
+	testcase = 101;
+	dev.driver_data = NULL;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == -EINVAL);
+	ut_assert(wdev.priority == 50);
+
+	dev.driver_data = &wdev;
+
+	testcase = 102;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == -EINVAL);
+	ut_assert(wdev.priority == 50);
+
+	testcase = 103;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == 3);
+	ut_assert(wdev.priority == 0);
+
+	testcase = 104;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == 3);
+	ut_assert(wdev.priority == 99);
+
+	testcase = 105;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == 3);
+	ut_assert(wdev.priority == -99);
+
+	testcase = 106;
+	s = priority_store(&dev, NULL, "10", 3);
+	ut_assert(s == 3);
+	ut_assert(wdev.priority == 15);
+}
+
 int main(void)
 {
-	//test(100, case_safe_vint);
+	test(100, case_priority_store);
 	return 0;
 }

@@ -560,6 +560,7 @@ struct mdev_parent_ops {
 #define ENODEV 2
 #define ENOMEM 3
 #define EFAULT 4
+#define ERANGE 5
 
 struct virqfd{};
 

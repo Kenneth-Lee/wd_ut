@@ -47,6 +47,14 @@ typedef enum {
 
 #define THIS_MODULE 0
 #define MODULE_VERSION(...)
+#define module_init(...)
+#define module_exit(...)
+#define MODULE_LICENSE(...)
+#define MODULE_AUTHOR(...)
+#define MODULE_DESCRIPTION(...)
+#define MODULE_VERSION(...)
+#define MODULE_ALIAS(...)
+#define EXPORT_SYMBOL(...)
 
 struct page {
 };
@@ -65,7 +73,9 @@ struct vfio_device_info {
 };
 
 struct mutex {};
-struct kobject {};
+struct kobject {
+	const char		*name;
+};
 
 typedef int spinlock_t;
 typedef size_t resource_size_t;
@@ -77,11 +87,6 @@ typedef size_t resource_size_t;
 
 #define __iomem
 
-#define MODULE_DESCRIPTION(str)
-#define MODULE_AUTHOR(str)
-#define MODULE_LICENSE(str)
-#define MODULE_ALIAS(str)
-#define EXPORT_SYMBOL(str)
 
 enum dma_data_direction {
 	DMA_BIDIRECTIONAL = 0,
@@ -193,9 +198,11 @@ struct device {
 	void		*driver_data;
 	void *bus;
 	void *iommu_fwspec;
-#if 0
 	struct device		*parent;
+	struct class		*class;
+	void	(*release)(struct device *dev);
 
+#if 0
 	struct device_private	*p;
 
 	struct kobject kobj;
@@ -247,10 +254,8 @@ struct device {
 	struct list_head	devres_head;
 
 	struct klist_node	knode_class;
-	struct class		*class;
 	const struct attribute_group **groups;	/* optional groups */
 
-	void	(*release)(struct device *dev);
 	struct iommu_group	*iommu_group;
 
 	struct mbi_data		*mbi;
@@ -479,7 +484,6 @@ struct vfio_irq_set {
 #define __init
 #define __exit
 #define subsys_initcall(str)
-#define module_exit(str)
 
 #define MAX_ERRNO	4095
 #define IS_ERR_VALUE(x) ((x) >= (unsigned long)-MAX_ERRNO)
@@ -574,4 +578,11 @@ void *mdev_get_drvdata(struct mdev_device *mdev)
 #define VFIO_DEVICE_GET_IRQ_INFO 3
 #define VFIO_DEVICE_SET_IRQS 4
 #define VFIO_DEVICE_RESET 5
+
+struct wait_queue_head {};
+typedef struct wait_queue_head wait_queue_head_t;
+
+typedef int pid_t;
+
+struct task_struct {};
 #endif

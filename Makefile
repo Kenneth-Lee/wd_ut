@@ -1,4 +1,4 @@
-TARGET_DIR=~/work/hisi-repo/kernel-dev/drivers/crypto/hisilicon/wd
+TARGET_DIR=~/work/hisi-repo/linux-kernel-wrapdrive/drivers/crypto/hisilicon/wd
 CFLAGS=-O0 --coverage -g -I general_stub -I $(TARGET_DIR) 
 COMM_FILES=ut.c comm.h
 

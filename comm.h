@@ -703,6 +703,7 @@ struct work_struct {};
 #define EFAULT 4
 #define ERANGE 5
 #define EBUSY 6
+#define EIO 7
 
 #define VM_FAULT_SIGBUS 6
 

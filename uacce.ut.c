@@ -17,9 +17,15 @@ static inline void *kzalloc(ssize_t size, gfp_t gfp) {
 		memset(p, 0, size);
 	return p;
 }
+
 static inline void *kfree(void *p) {
 	free(p);
 }
+
+struct sysfs_ops {
+	ssize_t	(*show)(struct kobject *, struct attribute *, char *);
+	ssize_t	(*store)(struct kobject *, struct attribute *, const char *, size_t);
+};
 
 struct vm_operations_struct {
 	vm_fault_t (*fault)(struct vm_fault *vmf);
@@ -55,10 +61,6 @@ struct vm_operations_struct {
 #define write_lock_irq(lock)
 #define write_unlock_irq(lock)
 #define get_order(size) 0
-#define alloc_pages(gfp_mask, order) 0
-#define kcalloc(n, bs, gfp_mask) NULL
-#define alloc_page(gfp_mask) NULL
-#define __free_pages(pages, order)
 #define remap_pfn_range(vma, addr, pfn, size, prot) 0
 #define page_to_pfn(page) 0
 #define vma_pages(vma) 0
@@ -174,6 +176,48 @@ void put_page(struct page* page)
 	ut_cnt_sub_range(100, 110, get_page);
 }
 
+struct page case201_pages[4];
+struct page *alloc_pages(gfp_t gfp_mask, unsigned int order)
+{
+	switch(testcase) {
+	case 200:
+		ut_assert(false);
+		break;
+	case 201:
+	case 202:
+		return case201_pages;
+	}
+
+	return NULL;
+}
+
+struct page *alloc_page(gfp_t gfp_mask)
+{
+	switch(testcase) {
+	case 200:
+	case 202:
+		return (struct page *)1;
+	case 201:
+		ut_assert(false);
+	}
+
+	return NULL;
+}
+
+void *kcalloc(size_t n, size_t size, gfp_t flags) {
+	if (testcase==202) {
+		return NULL;
+	}
+
+	return calloc(n, size);
+}
+
+int case202_free = 0;
+void __free_pages(struct page *page, unsigned int order)
+{
+	case202_free++;
+}
+
 #include "uacce.c"
 
 void case_iommu_map_qfr(void)
@@ -222,8 +266,39 @@ void case_iommu_map_qfr(void)
 	ut_check_cnt_range(100, 110, iommu_map);
 }
 
+void case_qfr_alloc_pages(void)
+{
+	int ret;
+	struct uacce_qfile_region qfr;
+	struct page *pages[10];
+
+	qfr.pages = pages;
+	qfr.nr_pages = 10;
+
+	/* test to pass - non-cont page */
+	qfr.flags = 0;
+	ret = uacce_qfr_alloc_pages(&qfr);
+	ut_assert(!ret);
+
+	/* test to pass - cont page */
+	testcase = 201;
+	qfr.flags |= UACCE_QFRF_CONT_PAGE;
+	ret = uacce_qfr_alloc_pages(&qfr);
+	ut_assert(!ret);
+
+	/* test to fail - kcalloc fail and free cont page */
+	testcase = 202;
+	qfr.flags |= UACCE_QFRF_CONT_PAGE;
+	ret = uacce_qfr_alloc_pages(&qfr);
+	ut_assert(ret);
+	ut_assert(case202_free==1);
+
+	/* todo: more test to fail case */
+}
+
 int main(void)
 {
 	test(100, case_iommu_map_qfr);
+	test(200, case_qfr_alloc_pages);
 	return 0;
 }

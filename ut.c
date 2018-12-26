@@ -72,7 +72,7 @@ static inline void testj(void (*test_func)(void)) {
 
 
 /**** pair counter ****/
-#define ut_cnt_val_range(tcid1, tcid2, cls) utcnt_##tcid1##tcid2##cls
+#define ut_cnt_val_range(tcid1, tcid2, cls) utcnt_##tcid1##_##tcid2##cls
 #define ut_cnt_def_range(tcid1, tcid2, cls) int ut_cnt_val_range(tcid1, tcid2, cls) = 0
 #define ut_cnt_add_range(tcid1, tcid2, cls) if(testcase>=tcid1&&testcase<=tcid2) ut_cnt_val_range(tcid1, tcid2, cls)++
 #define ut_cnt_sub_range(tcid1, tcid2, cls) if(testcase>=tcid1&&testcase<=tcid2) ut_cnt_val_range(tcid1, tcid2, cls)--

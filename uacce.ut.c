@@ -45,11 +45,6 @@ struct vm_operations_struct {
 #define class_destroy(...)
 #define PTR_ERR_OR_ZERO(...) 0
 #define wake_up_interruptible(wait)
-#define iommu_get_domain_for_dev(dev) NULL
-#define get_page(page)
-#define put_page(page)
-#define iommu_map(domain, addr, phy, size, prot) 0
-#define iommu_unmap(domain, addr, size)
 #define page_to_phys(page) 0
 #define down_read(lock)
 #define up_read(lock)
@@ -132,10 +127,103 @@ struct cdev{
 #define DECLARE_RWSEM(name) int name
 #define DEFINE_RWLOCK(name) int name
 
+struct iommu_domain {};
+struct iommu_domain _iommu_domain;
+struct iommu_domain *iommu_get_domain_for_dev(struct device *dev)
+{
+	return &_iommu_domain;
+}
+
+static ut_cnt_def_range(100, 110, iommu_map);
+typedef u64 phys_addr_t;
+int iommu_map(struct iommu_domain *domain, unsigned long iova,
+	      phys_addr_t paddr, size_t size, int prot)
+{
+	static int case101_cnt = 0;
+	static int case103_cnt = 0;
+
+	if (testcase==101)
+		if (case101_cnt++==7)
+			return -1;
+
+	if (testcase==102)
+		return -1;
+
+	if (testcase==103) {
+		if (case103_cnt==9)
+			return -1;
+		case103_cnt++;
+	}
+
+	ut_cnt_add_range(100, 110, iommu_map);
+	return 0;
+}
+size_t iommu_unmap(struct iommu_domain *domain, unsigned long iova, size_t size)
+{
+	ut_cnt_sub_range(100, 110, iommu_map);
+}
+
+static ut_cnt_def_range(100, 110, get_page);
+void get_page(struct page *page)
+{
+	ut_cnt_add_range(100, 110, get_page);
+}
+
+void put_page(struct page* page)
+{
+	ut_cnt_sub_range(100, 110, get_page);
+}
 
 #include "uacce.c"
 
+void case_iommu_map_qfr(void)
+{
+	int ret;
+	struct uacce uacce;
+	struct uacce_queue q;
+	struct uacce_qfile_region qfr;
+	struct page *pages[10];
+
+	q.uacce = &uacce;
+	qfr.pages = pages;
+	qfr.nr_pages = 10;
+
+	/* test to pass */
+	ret = uacce_iommu_map_qfr(&q, &qfr);
+	ut_assert(!ret);
+	ut_check_cnt_var_range(100, 110, get_page, 10);
+	ut_check_cnt_var_range(100, 110, iommu_map, 10);
+
+	/* fail in the middle */
+	testcase = 101;
+	ut_cnt_val_range(100, 110, get_page)=0;
+	ut_cnt_val_range(100, 110, iommu_map)=0;
+	ret = uacce_iommu_map_qfr(&q, &qfr);
+	ut_assert(ret==-1);
+	ut_check_cnt_range(100, 110, get_page);
+	ut_check_cnt_range(100, 110, iommu_map);
+
+	/* fail in the begining */
+	testcase = 102;
+	ut_cnt_val_range(100, 110, get_page)=0;
+	ut_cnt_val_range(100, 110, iommu_map)=0;
+	ret = uacce_iommu_map_qfr(&q, &qfr);
+	ut_assert(ret==-1);
+	ut_check_cnt_range(100, 110, get_page);
+	ut_check_cnt_range(100, 110, iommu_map);
+
+	/* fail in the end */
+	testcase = 103;
+	ut_cnt_val_range(100, 110, get_page)=0;
+	ut_cnt_val_range(100, 110, iommu_map)=0;
+	ret = uacce_iommu_map_qfr(&q, &qfr);
+	ut_assert(ret==-1);
+	ut_check_cnt_range(100, 110, get_page);
+	ut_check_cnt_range(100, 110, iommu_map);
+}
+
 int main(void)
 {
+	test(100, case_iommu_map_qfr);
 	return 0;
 }

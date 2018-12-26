@@ -34,11 +34,13 @@ typedef enum {
 	GFP_KERNEL,
 	GFP_ATOMIC,
 	__GFP_HIGHMEM,
-	__GFP_HIGH
+	__GFP_HIGH,
+	__GFP_ZERO
 } gfp_t;
 
 #define __user
 #define PAGE_SHIFT 26
+#define PAGE_SIZE 4096
 #define VM_SHARED 1
 #define PAGE_MASK 0xffff
 #define VM_READ 0xf
@@ -59,6 +61,201 @@ typedef enum {
 struct page {
 };
 
+struct file {
+	const struct file_operations	*f_op;
+	void			*private_data;
+#if 0
+	/*
+	 * Protects f_ep_links, f_flags.
+	 * Must not be taken from IRQ context.
+	 */
+	spinlock_t		f_lock;
+	enum rw_hint		f_write_hint;
+	atomic_long_t		f_count;
+	unsigned int 		f_flags;
+	fmode_t			f_mode;
+	struct mutex		f_pos_lock;
+	loff_t			f_pos;
+	struct fown_struct	f_owner;
+	const struct cred	*f_cred;
+	struct file_ra_state	f_ra;
+
+	u64			f_version;
+#ifdef CONFIG_SECURITY
+	void			*f_security;
+#endif
+
+#ifdef CONFIG_EPOLL
+	/* Used by fs/eventpoll.c to link all the hooks to this file */
+	struct list_head	f_ep_links;
+	struct list_head	f_tfile_llink;
+#endif /* #ifdef CONFIG_EPOLL */
+	struct address_space	*f_mapping;
+	errseq_t		f_wb_err;
+#endif
+};
+
+struct vm_area_struct {
+	unsigned int vm_pgoff;
+	unsigned int vm_end;
+	unsigned int vm_start;
+	unsigned int vm_flags;
+	void *vm_private_data;
+};
+
+struct inode {
+#if 0
+	umode_t			i_mode;
+	unsigned short		i_opflags;
+	kuid_t			i_uid;
+	kgid_t			i_gid;
+	unsigned int		i_flags;
+
+#ifdef CONFIG_FS_POSIX_ACL
+	struct posix_acl	*i_acl;
+	struct posix_acl	*i_default_acl;
+#endif
+
+	const struct inode_operations	*i_op;
+	struct super_block	*i_sb;
+	struct address_space	*i_mapping;
+
+#ifdef CONFIG_SECURITY
+	void			*i_security;
+#endif
+
+	/* Stat data, not accessed from path walking */
+	unsigned long		i_ino;
+	/*
+	 * Filesystems may only read i_nlink directly.  They shall use the
+	 * following functions for modification:
+	 *
+	 *    (set|clear|inc|drop)_nlink
+	 *    inode_(inc|dec)_link_count
+	 */
+	union {
+		const unsigned int i_nlink;
+		unsigned int __i_nlink;
+	};
+	dev_t			i_rdev;
+	loff_t			i_size;
+	struct timespec64	i_atime;
+	struct timespec64	i_mtime;
+	struct timespec64	i_ctime;
+	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
+	unsigned short          i_bytes;
+	u8			i_blkbits;
+	u8			i_write_hint;
+	blkcnt_t		i_blocks;
+
+#ifdef __NEED_I_SIZE_ORDERED
+	seqcount_t		i_size_seqcount;
+#endif
+
+	/* Misc */
+	unsigned long		i_state;
+	struct rw_semaphore	i_rwsem;
+
+	unsigned long		dirtied_when;	/* jiffies of first dirtying */
+	unsigned long		dirtied_time_when;
+
+	struct hlist_node	i_hash;
+	struct list_head	i_io_list;	/* backing dev IO list */
+#ifdef CONFIG_CGROUP_WRITEBACK
+	struct bdi_writeback	*i_wb;		/* the associated cgroup wb */
+
+	/* foreign inode detection, see wbc_detach_inode() */
+	int			i_wb_frn_winner;
+	u16			i_wb_frn_avg_time;
+	u16			i_wb_frn_history;
+#endif
+	struct list_head	i_lru;		/* inode LRU list */
+	struct list_head	i_sb_list;
+	struct list_head	i_wb_list;	/* backing dev writeback list */
+	union {
+		struct hlist_head	i_dentry;
+		struct rcu_head		i_rcu;
+	};
+	atomic64_t		i_version;
+	atomic_t		i_count;
+	atomic_t		i_dio_count;
+	atomic_t		i_writecount;
+#ifdef CONFIG_IMA
+	atomic_t		i_readcount; /* struct files open RO */
+#endif
+	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
+	struct file_lock_context	*i_flctx;
+	struct address_space	i_data;
+	struct list_head	i_devices;
+	union {
+		struct pipe_inode_info	*i_pipe;
+		struct block_device	*i_bdev;
+		struct cdev		*i_cdev;
+		char			*i_link;
+		unsigned		i_dir_seq;
+	};
+
+	__u32			i_generation;
+
+#ifdef CONFIG_FSNOTIFY
+	__u32			i_fsnotify_mask; /* all events this inode cares about */
+	struct fsnotify_mark_connector __rcu	*i_fsnotify_marks;
+#endif
+
+#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+	struct fscrypt_info	*i_crypt_info;
+#endif
+
+	void			*i_private; /* fs or device private pointer */
+#endif
+};
+struct poll_table_struct {
+};
+#define poll_table struct poll_table_struct
+typedef int __poll_t;
+typedef int fl_owner_t;
+struct file_operations {
+	struct module *owner;
+	loff_t (*llseek) (struct file *, loff_t, int);
+	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+	__poll_t (*poll) (struct file *, struct poll_table_struct *);
+	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+	long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+	int (*mmap) (struct file *, struct vm_area_struct *);
+	int (*open) (struct inode *, struct file *);
+	int (*flush) (struct file *, fl_owner_t id);
+	int (*release) (struct inode *, struct file *);
+	int (*fsync) (struct file *, loff_t, loff_t, int datasync);
+	int (*fasync) (int, struct file *, int);
+	ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
+	unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+	int (*check_flags)(int);
+#if 0
+	int (*lock) (struct file *, int, struct file_lock *);
+	int (*flock) (struct file *, int, struct file_lock *);
+	int (*iterate_shared) (struct file *, struct dir_context *);
+	int (*iterate) (struct file *, struct dir_context *);
+	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
+	unsigned long mmap_supported_flags;
+	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
+	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
+	int (*setlease)(struct file *, long, struct file_lock **, void **);
+	long (*fallocate)(struct file *file, int mode, loff_t offset,
+			  loff_t len);
+	void (*show_fdinfo)(struct seq_file *m, struct file *f);
+#ifndef CONFIG_MMU
+	unsigned (*mmap_capabilities)(struct file *);
+#endif
+	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
+			loff_t, size_t, unsigned int);
+	loff_t (*remap_file_range)(struct file *file_in, loff_t pos_in,
+				   struct file *file_out, loff_t pos_out,
+				   loff_t len, unsigned int remap_flags);
+	int (*fadvise)(struct file *, loff_t, loff_t, int);
+#endif
+};
 typedef irqreturn_t (*irq_handler_t)(int, void *);
 
 struct vfio_device_info {
@@ -71,6 +268,8 @@ struct vfio_device_info {
 	__u32	num_regions;	/* Max region index + 1 */
 	__u32	num_irqs;	/* Max IRQ index + 1 */
 };
+
+typedef int vm_fault_t;
 
 struct mutex {};
 struct kobject {
@@ -112,6 +311,7 @@ enum dma_data_direction {
 #define NETIF_F_GRO 0x10
 
 #define DMA_BIT_MASK(val) (val)
+#define BIT(n) (1<<n)
 
 unsigned long jiffies;
 
@@ -178,6 +378,10 @@ static inline void list_del(struct list_head * entry)
 	__list_del(entry->prev, entry->next);
 }
 
+int list_empty(struct list_head *entry)
+{
+	return entry->next == entry->prev;
+}
 
 
 struct hlist_node {};
@@ -201,6 +405,8 @@ struct device {
 	struct device		*parent;
 	struct class		*class;
 	void	(*release)(struct device *dev);
+	dev_t			devt;
+	const struct attribute_group **groups;	/* optional groups */
 
 #if 0
 	struct device_private	*p;
@@ -247,14 +453,12 @@ struct device {
 
 	struct acpi_dev_node	acpi_node; /* associated ACPI device node */
 
-	dev_t			devt;	/* dev_t, creates the sysfs "dev" */
 	u32			id;	/* device instance */
 
 	spinlock_t		devres_lock;
 	struct list_head	devres_head;
 
 	struct klist_node	knode_class;
-	const struct attribute_group **groups;	/* optional groups */
 
 	struct iommu_group	*iommu_group;
 
@@ -263,24 +467,6 @@ struct device {
 	bool			offline_disabled:1;
 	bool			offline:1;
 #endif
-};
-
-struct mdev_device {
-	struct device dev;
-	void *driver_data;
-};
-
-struct device *mdev_dev(struct mdev_device *mdev)
-{
-	return &mdev->dev;
-}
-
-struct vm_area_struct {
-	unsigned int vm_pgoff;
-	unsigned int vm_end;
-	unsigned int vm_start;
-	unsigned int vm_flags;
-	void *vm_private_data;
 };
 
 #define SET_NETDEV_DEV(ndev, dev)
@@ -310,6 +496,43 @@ struct platform_device {
 
         /* arch specific additions */
         struct pdev_archdata    archdata;
+#endif
+};
+
+typedef int pgoff_t;
+struct vm_fault {
+	struct vm_area_struct *vma;	/* Target VMA */
+	unsigned int flags;		/* FAULT_FLAG_xxx flags */
+	gfp_t gfp_mask;			/* gfp mask to be used for allocations */
+	pgoff_t pgoff;			/* Logical page offset based on vma */
+	unsigned long address;		/* Faulting virtual address */
+	struct page *page;
+#if 0
+	pmd_t *pmd;			/* Pointer to pmd entry matching
+					 * the 'address' */
+	pud_t *pud;			/* Pointer to pud entry matching
+					 * the 'address'
+					 */
+	pte_t orig_pte;			/* Value of PTE at the time of fault */
+
+	struct page *cow_page;		/* Page handler may use for COW fault */
+	struct mem_cgroup *memcg;	/* Cgroup cow_page belongs to */
+	/* These three entries are valid only while holding ptl lock */
+	pte_t *pte;			/* Pointer to pte entry matching
+					 * the 'address'. NULL if the page
+					 * table hasn't been allocated.
+					 */
+	spinlock_t *ptl;		/* Page table lock.
+					 * Protects pte page table if 'pte'
+					 * is not NULL, otherwise pmd.
+					 */
+	pgtable_t prealloc_pte;		/* Pre-allocated pte page table.
+					 * vm_ops->map_pages() calls
+					 * alloc_set_pte() from atomic context.
+					 * do_fault_around() pre-allocates
+					 * page table to avoid allocation from
+					 * atomic context.
+					 */
 #endif
 };
 
@@ -399,15 +622,6 @@ struct device_attribute {
 			 const char *buf, size_t count);
 };
 
-#define __ATTR(_name, _mode, _show, _store) {                           \
-	.attr = {.name = #_name,                            \
-	.mode = (_mode) },             \
-	.show   = _show,                                                \
-	.store  = _store,                                               \
-}
-#define DEVICE_ATTR(_name, _mode, _show, _store) \
-	struct device_attribute dev_attr_##_name = __ATTR(_name, _mode, _show, _store)
-
 struct attribute_group {
 	const char              *name;
 	struct attribute        **attrs;
@@ -440,45 +654,6 @@ struct class {
 	const struct dev_pm_ops *pm;
 
 	struct subsys_private *p;
-};
-
-struct vfio_region_info {
-	__u32	argsz;
-	__u32	flags;
-#define VFIO_REGION_INFO_FLAG_READ	(1 << 0) /* Region supports read */
-#define VFIO_REGION_INFO_FLAG_WRITE	(1 << 1) /* Region supports write */
-#define VFIO_REGION_INFO_FLAG_MMAP	(1 << 2) /* Region supports mmap */
-#define VFIO_REGION_INFO_FLAG_CAPS	(1 << 3) /* Info supports caps */
-	__u32	index;		/* Region index */
-	__u32	cap_offset;	/* Offset within info struct of first cap */
-	__u64	size;		/* Region size (bytes) */
-	__u64	offset;		/* Region offset from start of device fd */
-};
-
-struct vfio_irq_info {
-	__u32	argsz;
-	__u32	flags;
-#define VFIO_IRQ_INFO_EVENTFD		(1 << 0)
-#define VFIO_IRQ_INFO_MASKABLE		(1 << 1)
-#define VFIO_IRQ_INFO_AUTOMASKED	(1 << 2)
-#define VFIO_IRQ_INFO_NORESIZE		(1 << 3)
-	__u32	index;		/* IRQ index */
-	__u32	count;		/* Number of IRQs within this index */
-};
-
-struct vfio_irq_set {
-	__u32	argsz;
-	__u32	flags;
-#define VFIO_IRQ_SET_DATA_NONE		(1 << 0) /* Data not present */
-#define VFIO_IRQ_SET_DATA_BOOL		(1 << 1) /* Data is bool (u8) */
-#define VFIO_IRQ_SET_DATA_EVENTFD	(1 << 2) /* Data is eventfd (s32) */
-#define VFIO_IRQ_SET_ACTION_MASK	(1 << 3) /* Mask interrupt */
-#define VFIO_IRQ_SET_ACTION_UNMASK	(1 << 4) /* Unmask interrupt */
-#define VFIO_IRQ_SET_ACTION_TRIGGER	(1 << 5) /* Trigger interrupt */
-	__u32	index;
-	__u32	start;
-	__u32	count;
-	__u8	data[];
 };
 
 #define __init
@@ -518,40 +693,6 @@ struct work_struct {};
 
 #define EXPORT_SYMBOL_GPL(cls)
 
-struct mdev_type_attribute {
-	struct attribute attr;
-	ssize_t (*show)(struct kobject *kobj, struct device *dev, char *buf);
-	ssize_t (*store)(struct kobject *kobj, struct device *dev,
-			 const char *buf, size_t count);
-};
-#define MDEV_TYPE_ATTR_RW(_name) \
-	struct mdev_type_attribute mdev_type_attr_##_name
-#define MDEV_TYPE_ATTR_RO(_name) \
-	struct mdev_type_attribute mdev_type_attr_##_name
-#define MDEV_TYPE_ATTR_WO(_name) \
-	struct mdev_type_attribute mdev_type_attr_##_name
-
-struct mdev_parent_ops {
-	struct module   *owner;
-	const struct attribute_group **dev_attr_groups;
-	const struct attribute_group **mdev_attr_groups;
-	struct attribute_group **supported_type_groups;
-
-	int     (*create)(struct kobject *kobj, struct mdev_device *mdev);
-	int     (*remove)(struct mdev_device *mdev);
-	int     (*open)(struct mdev_device *mdev);
-	void    (*release)(struct mdev_device *mdev);
-	ssize_t (*read)(struct mdev_device *mdev, char __user *buf,
-			size_t count, loff_t *ppos);
-	ssize_t (*write)(struct mdev_device *mdev, const char __user *buf,
-			 size_t count, loff_t *ppos);
-	long	(*ioctl)(struct mdev_device *mdev, unsigned int cmd,
-			 unsigned long arg);
-	int	(*mmap)(struct mdev_device *mdev, struct vm_area_struct *vma);
-};
-
-#define offsetofend(TYPE, MEMBER) (offsetof(TYPE, MEMBER)	+ sizeof(((TYPE *)0)->MEMBER))
-
 #define mutex_init(lock)
 #define mutex_lock(lock)
 #define mutex_unlock(lock)
@@ -561,29 +702,22 @@ struct mdev_parent_ops {
 #define ENOMEM 3
 #define EFAULT 4
 #define ERANGE 5
+#define EBUSY 6
 
-struct virqfd{};
-
-void mdev_set_drvdata(struct mdev_device *mdev, void *data)
-{
-	mdev->driver_data = data;
-} 
-void *mdev_get_drvdata(struct mdev_device *mdev)
-{
-	return mdev->driver_data;
-}
-
-
-#define VFIO_DEVICE_GET_INFO 1
-#define VFIO_DEVICE_GET_REGION_INFO 2
-#define VFIO_DEVICE_GET_IRQ_INFO 3
-#define VFIO_DEVICE_SET_IRQS 4
-#define VFIO_DEVICE_RESET 5
+#define VM_FAULT_SIGBUS 6
 
 struct wait_queue_head {};
 typedef struct wait_queue_head wait_queue_head_t;
 
 typedef int pid_t;
 
-struct task_struct {};
+struct mm_struct {
+	unsigned long data_vm;
+	int mmap_sem;
+};
+struct task_struct {
+	struct mm_struct *mm;
+};
+
+
 #endif

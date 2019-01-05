@@ -33,14 +33,20 @@ struct vm_operations_struct {
 
 #define rwlock_t int
 struct completion{};
+struct driver {
+	char *name;
+};
 struct pci_dev {
 	struct device dev;
 	int devfn;
 	int is_physfn;
+	int is_virtfn;
+	struct driver *driver;
 };
 
 #define VM_DONTCOPY 1
 #define VM_DONTEXPAND 2
+#define VM_IO 4
 
 #define init_waitqueue_head(...)
 #define __module_get(...)
@@ -70,7 +76,7 @@ struct pci_dev {
 #define write_unlock_irq(lock)
 #define get_order(size) 0
 #define remap_pfn_range(vma, addr, pfn, size, prot) 0
-#define page_to_pfn(page) 0
+#define page_to_pfn(page) 1
 #define vunmap(kaddr)
 #define fget(fd) NULL
 #define vmap(pages, nr_pages, f1, f2) NULL
@@ -100,7 +106,6 @@ struct pci_dev {
 #define	unregister_chrdev_region(devt, b)
 #define WARN_ON(...)
 #define sprintf(...) 0
-#define writel(...)
 #define readl_relaxed_poll_timeout(...) 0
 #define lower_32_bits(...) 0
 #define upper_32_bits(...) 0
@@ -113,7 +118,6 @@ struct pci_dev {
 #define dma_rmb(...)
 #define find_first_zero_bit(...) 0
 #define set_bit(...)
-#define dma_alloc_coherent(...) 0
 #define	bitmap_clear(...) 0
 #define ilog2(...) 0
 #define init_completion(...)
@@ -124,17 +128,14 @@ struct pci_dev {
 #define pci_enable_device_mem(...) 0
 #define pci_request_mem_regions(...) 0
 #define pci_resource_start(...) 0
-#define	pci_resource_len(...) 0
-#define devm_ioremap(...) 0
+#define	pci_resource_len(...) 100
 #define	dma_set_mask_and_coherent(...)
 #define	pci_set_master(...)
 #define pci_alloc_irq_vectors(...) 0
 #define rwlock_init(...)
 #define devm_request_threaded_irq(...) 0
 #define pci_irq_vector(...) 0
-#define devm_kcalloc(...) 0
 #define BITS_TO_LONGS(...) 0
-#define max_t(...) 0
 #define devm_free_irq(...)
 #define pci_free_irq_vectors(...)
 #define pci_release_mem_regions(...)
@@ -192,79 +193,14 @@ struct iommu_domain *iommu_get_domain_for_dev(struct device *dev)
 	return &_iommu_domain;
 }
 
-static ut_cnt_def_range(100, 110, iommu_map);
+void writel(u32 b, volatile void *addr) {
+	if (testcase == 101)
+		ut_assert(0); /* no touch hw in case 101 */
+}
 typedef u64 phys_addr_t;
-int iommu_map(struct iommu_domain *domain, unsigned long iova,
-	      phys_addr_t paddr, size_t size, int prot)
+
+void *devm_kcalloc(struct device *dev, size_t n, size_t size, gfp_t flags)
 {
-	static int case101_cnt = 0;
-	static int case103_cnt = 0;
-
-	if (testcase==101)
-		if (case101_cnt++==7)
-			return -1;
-
-	if (testcase==102)
-		return -1;
-
-	if (testcase==103) {
-		if (case103_cnt==9)
-			return -1;
-		case103_cnt++;
-	}
-
-	ut_cnt_add_range(100, 110, iommu_map);
-	return 0;
-}
-size_t iommu_unmap(struct iommu_domain *domain, unsigned long iova, size_t size)
-{
-	ut_cnt_sub_range(100, 110, iommu_map);
-}
-
-static ut_cnt_def_range(100, 110, get_page);
-void get_page(struct page *page)
-{
-	ut_cnt_add_range(100, 110, get_page);
-}
-
-void put_page(struct page* page)
-{
-	ut_cnt_sub_range(100, 110, get_page);
-}
-
-struct page case201_pages[4];
-struct page *alloc_pages(gfp_t gfp_mask, unsigned int order)
-{
-	switch(testcase) {
-	case 200:
-		ut_assert(false);
-		break;
-	case 201:
-	case 202:
-		return case201_pages;
-	}
-
-	return NULL;
-}
-
-struct page *alloc_page(gfp_t gfp_mask)
-{
-	switch(testcase) {
-	case 200:
-	case 202:
-		return (struct page *)1;
-	case 201:
-		ut_assert(false);
-	}
-
-	return NULL;
-}
-
-void *kcalloc(size_t n, size_t size, gfp_t flags) {
-	if (testcase==202) {
-		return NULL;
-	}
-
 	return calloc(n, size);
 }
 
@@ -279,13 +215,119 @@ int vma_pages(struct vm_area_struct *vma) {
 	return vma_pages_ret;
 }
 
+void *devm_ioremap(struct device *dev, resource_size_t offset,
+			   resource_size_t size)
+{
+	return malloc(size);
+}
+
+#define max_t(type, a, b) (type)(a>b?a:b)
+
+void *dma_alloc_coherent(struct device *dev, size_t size,
+		dma_addr_t *dma_handle, gfp_t gfp) {
+	*dma_handle = (dma_addr_t)malloc(size);
+	return (void *)*dma_handle;
+}
+
+#define CONFIG_CRYPTO_QM_UACCE 1
+
 #include "qm.c"
 
-void case_(void) {
+void uacce_wake_up(struct uacce_queue *q) {
+}
+
+static ut_cnt_def_range(100, 110, uacce_reg);
+int uacce_register(struct uacce *uacce) {
+	ut_cnt_add_range(100, 110, uacce_reg);
+	return 0;
+}
+
+void uacce_unregister(struct uacce *uacce) {
+	ut_cnt_sub_range(100, 110, uacce_reg);
+}
+
+
+void case_init_start(void) {
+	struct qm_info qm;
+	struct driver driver;
+	struct pci_dev pdev;
+	int ret;
+	struct hisi_qp *qp;
+	struct uacce uacce;
+	struct uacce_queue *uq;
+	struct uacce_qfile_region qfr;
+
+	qm.ver = 1;
+	qm.pdev = &pdev;
+	qm.qp_num = 10;
+	pdev.driver = &driver;
+	pdev.is_physfn = 1;
+	uacce.priv = &qm;
+
+	/* test to pass */
+
+	/* NOUACCE MODE */
+	ut_cnt_val_range(100, 110, uacce_reg)=0;
+	qm.uacce_mode = UACCE_MODE_NOUACCE;
+	ret = hisi_qm_init(&qm);
+	ut_assert(!ret);
+	ret = hisi_qm_start(&qm);
+	ut_assert(!ret);
+	ut_check_cnt_var_range(100, 110, uacce_reg, 0);
+	hisi_qm_stop(&qm);
+	hisi_qm_uninit(&qm);
+
+	qp = hisi_qm_create_qp(&qm, 0);
+	ut_assert(qp);
+	ret = hisi_qm_start_qp(qp, 0);
+	ut_assert(!ret);
+	hisi_qm_release_qp(qp);
+
+	/* UACCE MODE: delay start */
+	testcase == 101;
+	ut_cnt_val_range(100, 110, uacce_reg)=0;
+	qm.uacce_mode = UACCE_MODE_UACCE;
+	ret = hisi_qm_init(&qm);
+	ut_assert(!ret);
+	ret = hisi_qm_start(&qm);
+	ut_assert(!ret);
+	ut_check_cnt_var_range(100, 110, uacce_reg, 1);
+
+	ret = hisi_qm_uacce_get_queue(&uacce, 0, &uq);
+	ut_assert(!ret);
+	hisi_qm_uacce_put_queue(uq);
+
+	/* NOIOMMU MODE */
+	testcase == 102;
+	ut_cnt_val_range(100, 110, uacce_reg)=0;
+	qm.uacce_mode = UACCE_MODE_NOIOMMU;
+	ret = hisi_qm_init(&qm);
+	ut_assert(!ret);
+	ret = hisi_qm_start(&qm);
+	ut_assert(!ret);
+	ut_check_cnt_var_range(100, 110, uacce_reg, 1);
+
+	ret = hisi_qm_uacce_get_queue(&uacce, 0, &uq);
+	ut_assert(!ret);
+
+	/* create q fake dus for noiommu to start */
+	qfr.type = UACCE_QFRT_DUS;
+	qfr.cont_pages = (struct page *)1;
+	ret = hisi_qm_uacce_map(uq, &qfr);
+	ut_assert(!ret);
+
+	ret = hisi_qm_uacce_start_queue(uq);
+	ut_assert(!ret);
+	hisi_qm_uacce_stop_queue(uq);
+	hisi_qm_uacce_put_queue(uq);
+
+	hisi_qm_stop(&qm);
+	hisi_qm_uninit(&qm);
+	ut_check_cnt_var_range(100, 110, uacce_reg, 0);
 }
 
 int main(void)
 {
-	test(100, case_);
+	test(100, case_init_start);
 	return 0;
 }

@@ -1,16 +1,17 @@
 TARGET_DIR=~/work/hisi-repo/linux-kernel-warpdrive
-TESTED_DIR=$(TARGET_DIR)/drivers/uacce
-TESTED_DIR1=$(TARGET_DIR)/drivers/crypto/hisilicon
-CFLAGS=-O0 --static --coverage -g -I general_stub -I $(TESTED_DIR) -I $(TESTED_DIR1) -D __UT__
+CFLAGS=-O0 --static --coverage -g -I general_stub -D __UT__
 COMM_FILES=ut.c comm.h
+
+UACCE_DIR=$(TARGET_DIR)/drivers/uacce
+QM_DIR=$(TARGET_DIR)/drivers/crypto/hisilicon
 
 all: uacce.ut qm.ut
 
-%.ut: %.ut.c
-	$(CC) $(CFLAGS) $< -o $@
+uacce.ut: uacce.ut.c $(UACCE_DIR)/uacce.c $(COMM_FILES) prepare
+	$(CC) $(CFLAGS) -I $(UACCE_DIR) $< -o $@
 
-uacce.ut: uacce.ut.c $(TESTED_DIR)/uacce.c $(COMM_FILES) prepare
-qm.ut: qm.ut.c $(TESTED_DIR)/uacce.c $(COMM_FILES) prepare
+qm.ut: qm.ut.c $(QM_DIR)/qm.c $(COMM_FILES) prepare
+	$(CC) $(CFLAGS) -I $(QM_DIR) $< -o $@
 
 test: all
 	@echo "test uacce:"

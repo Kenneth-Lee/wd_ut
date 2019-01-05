@@ -3,8 +3,6 @@
 
 #include "ut.c"
 
-typedef long long __le64;
-typedef short __le16;
 typedef unsigned short u16;
 typedef unsigned char u8;
 typedef unsigned int u32;
@@ -16,9 +14,12 @@ typedef u8 __u8;
 typedef u16 __u16;
 typedef u32 __u32;
 typedef u64 __u64;
+typedef long long __le64;
+typedef short __le16;
 
 typedef s32 __s32;
 typedef s64 __s64;
+typedef s32 __le32;
 
 typedef u32 uint32_t;
 typedef u8 uint8_t;

@@ -255,7 +255,7 @@ void case_init_start(void) {
 	struct hisi_qp *qp;
 	struct uacce uacce;
 	struct uacce_queue *uq;
-	struct uacce_qfile_region qfr;
+	struct uacce_qfile_region qfr, qfr1;
 
 	qm.ver = 1;
 	qm.pdev = &pdev;
@@ -283,6 +283,7 @@ void case_init_start(void) {
 	ut_assert(!ret);
 	hisi_qm_release_qp(qp);
 
+
 	/* UACCE MODE: delay start */
 	testcase == 101;
 	ut_cnt_val_range(100, 110, uacce_reg)=0;
@@ -295,7 +296,28 @@ void case_init_start(void) {
 
 	ret = hisi_qm_uacce_get_queue(&uacce, 0, &uq);
 	ut_assert(!ret);
+
+	uq->qfrs[UACCE_QFRT_DKO] = &qfr;
+	qfr.type = UACCE_QFRT_DKO;
+	qfr.nr_pages = QM_DKO_PAGE_NR;
+	qfr.kaddr = malloc(qfr.nr_pages << 12);
+	qfr.iova = (unsigned long)qfr.kaddr;
+
+	uq->qfrs[UACCE_QFRT_DUS] = &qfr1;
+	qfr1.type = UACCE_QFRT_DUS;
+	qfr1.nr_pages = QM_DUS_PAGE_NR;
+	qfr1.kaddr = malloc(qfr1.nr_pages << 12);
+	qfr1.iova = (unsigned long)qfr1.kaddr;
+
+	ret = hisi_qm_uacce_start_queue(uq);
+	ut_assert(!ret);
+	hisi_qm_uacce_stop_queue(uq);
 	hisi_qm_uacce_put_queue(uq);
+
+	hisi_qm_stop(&qm);
+	hisi_qm_uninit(&qm);
+	ut_check_cnt_var_range(100, 110, uacce_reg, 0);
+
 
 	/* NOIOMMU MODE */
 	testcase == 102;
